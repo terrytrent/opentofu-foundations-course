@@ -62,22 +62,37 @@ resource "aws_key_pair" "deployer" {
 }
 
 resource "aws_ssm_parameter" "deployer_ssh_key" {
-  name      = "deployer_ssh_key"
-  type      = "SecureString"
-  overwrite = true
-  value     = jsonencode({ private = "${tls_private_key.rsa.private_key_pem}", public = "${tls_private_key.rsa.public_key_openssh}" })
+  name  = "deployer_ssh_key"
+  type  = "SecureString"
+  value = jsonencode({ private = "${tls_private_key.rsa.private_key_pem}", public = "${tls_private_key.rsa.public_key_openssh}" })
+
+  lifecycle {
+    ignore_changes = [
+      value
+    ]
+  }
 }
 
 resource "aws_ssm_parameter" "db_credentials" {
-  name      = "db_credentials"
-  type      = "SecureString"
-  overwrite = true
-  value     = jsonencode({ username = "${random_pet.wordpress_db_user.id}", password = "${random_password.wordpress_db_password.result}" })
+  name  = "db_credentials"
+  type  = "SecureString"
+  value = jsonencode({ username = "${random_pet.wordpress_db_user.id}", password = "${random_password.wordpress_db_password.result}" })
+
+  lifecycle {
+    ignore_changes = [
+      value
+    ]
+  }
 }
 
 resource "aws_ssm_parameter" "wordpress_admin_credentials" {
-  name      = "wordpress_admin_credentials"
-  type      = "SecureString"
-  overwrite = true
-  value     = jsonencode({ username = "${random_pet.wordpress_admin.id}", password = "${random_password.wordpress_admin_password.result}" })
+  name  = "wordpress_admin_credentials"
+  type  = "SecureString"
+  value = jsonencode({ username = "${random_pet.wordpress_admin.id}", password = "${random_password.wordpress_admin_password.result}" })
+
+  lifecycle {
+    ignore_changes = [
+      value
+    ]
+  }
 }
