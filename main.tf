@@ -42,6 +42,10 @@ resource "aws_iam_role" "instance_role" {
     name   = "parameter_store_policy"
     policy = data.aws_iam_policy_document.parameter_store.json
   }
+
+  managed_policy_arns = [
+    "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+  ]
 }
 
 resource "aws_iam_instance_profile" "instance_profile" {
@@ -54,15 +58,14 @@ resource "aws_instance" "this" {
     aws_db_instance.this,
     aws_iam_instance_profile.instance_profile,
     aws_security_group.wordpress,
-    aws_security_group.ssh,
     aws_key_pair.deployer,
     random_pet.wordpress_db_user
   ]
-  ami           = "ami-0ff8a91507f77f867"
+  ami           = var.ami_id
   instance_type = "t2.micro"
 
   associate_public_ip_address = true
-  vpc_security_group_ids      = [aws_security_group.wordpress.id, aws_security_group.ssh.id]
+  vpc_security_group_ids      = [aws_security_group.wordpress.id]
 
   key_name = aws_key_pair.deployer.key_name
 
@@ -100,18 +103,6 @@ resource "aws_db_instance" "this" {
 
   tags = {
     Name = "${random_pet.wordpress_db_user.keepers.name_prefix}"
-  }
-}
-
-resource "aws_security_group" "ssh" {
-  name = "${var.name_prefix}-ssh"
-
-  ingress {
-    description = "SSH from local"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["${chomp(data.http.myip.response_body)}/32"]
   }
 }
 

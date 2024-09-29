@@ -3,6 +3,11 @@ variable "name_prefix" {
   default = "my-instance"
 }
 
+variable "ami_id" {
+  type = string
+  default = "ami-0ebfd941bbafe70c6"
+}
+
 variable "image" {
   type = object({
     name = string

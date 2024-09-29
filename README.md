@@ -18,3 +18,4 @@ I implemented the code as the presenter worked through it, then started focusing
 * Limited the ingress for SSH and HTTP to only allow communication directly from the public IP address I am working from when I `tofu apply` the plan
 * Added an RSA key to SSH into the EC2 instance, storing it in parameter store and creating local RSA public and private keys automatically
 * Created a username and password for the Wordpress admin account and storing in parameter store
+* Enabled SSM registration, disabled SSH access since I can now connect to the instance via SSM
