@@ -1,0 +1,17 @@
+#!/bin/bash
+
+yum update -y
+yum install docker jq -y
+service docker start
+usermod -a -G docker ec2-user
+
+WORDPRESS_DB_CREDENTIALS=`/usr/bin/aws ssm get-parameter --name "db_credentials" --with-decryption --query Parameter.Value --region us-east-1 --output text`
+WORDPRESS_DB_USER=`echo "$${WORDPRESS_DB_CREDENTIALS}" | jq -r .username`
+WORDPRESS_DB_PASSWORD=`echo "$${WORDPRESS_DB_CREDENTIALS}" | jq -r .password`
+
+docker run -d \
+-e WORDPRESS_DB_HOST="${DB_HOST}" \
+-e WORDPRESS_DB_USER="$${WORDPRESS_DB_USER}" \
+-e WORDPRESS_DB_PASSWORD="$${WORDPRESS_DB_PASSWORD}" \
+-e WORDPRESS_DB_NAME=wordpress \
+-p 80:80 ${IMAGE_NAME}:${IMAGE_TAG}
