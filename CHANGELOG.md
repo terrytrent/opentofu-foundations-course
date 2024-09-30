@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog],
 and this project adheres to [Semantic Versioning].
 
+## [0.0.4] - 2024-09-30
+### Changed
+
+- Modified EC2 Instance to use a launch template
+- Modiifed EC2 Instance to be recreated if user data changes
+- Created IAM Policy instead of inline policy for IAM Role
+
+
 ## [0.0.3] - 2024-09-29
 ### Changed
 

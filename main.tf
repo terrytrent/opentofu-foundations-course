@@ -23,28 +23,29 @@ data "aws_iam_policy_document" "assume_role_policy" {
   }
 }
 
-data "aws_iam_policy_document" "parameter_store" {
-  statement {
-    effect = "Allow"
-    actions = [
-      "ssm:GetParameter",
-      "ssm:GetParameters"
-    ]
-    resources = ["arn:aws:ssm:us-east-1:${data.aws_vpc.default.owner_id}:parameter/*"]
-  }
+resource "aws_iam_policy" "read_parameter_store" {
+  name = "read_parameter_store"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ssm:GetParameter",
+          "ssm:GetParameters"
+        ]
+        Resource = ["arn:aws:ssm:us-east-1:${data.aws_vpc.default.owner_id}:parameter/*"]
+    }]
+  })
 }
 
 resource "aws_iam_role" "instance_role" {
   name               = "${var.name_prefix}-role"
   assume_role_policy = data.aws_iam_policy_document.assume_role_policy.json
 
-  inline_policy {
-    name   = "parameter_store_policy"
-    policy = data.aws_iam_policy_document.parameter_store.json
-  }
-
   managed_policy_arns = [
-    "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+    "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
+    aws_iam_policy.read_parameter_store.arn
   ]
 }
 
@@ -53,26 +54,34 @@ resource "aws_iam_instance_profile" "instance_profile" {
   role = aws_iam_role.instance_role.name
 }
 
-resource "aws_instance" "this" {
+resource "terraform_data" "user_data_replace" {
+  input = filesha1("user_data.tftpl")
+}
+
+resource "aws_launch_template" "this" {
   depends_on = [
     aws_db_instance.this,
-    aws_iam_instance_profile.instance_profile,
     aws_security_group.wordpress,
     aws_key_pair.deployer,
     random_pet.wordpress_db_user
   ]
-  ami           = var.ami_id
+  name = "${random_pet.wordpress_db_user.keepers.name_prefix}-launch-template"
+
+  image_id      = var.ami_id
   instance_type = "t2.micro"
 
-  associate_public_ip_address = true
-  vpc_security_group_ids      = [aws_security_group.wordpress.id]
+  network_interfaces {
+    associate_public_ip_address = true
+    security_groups             = [aws_security_group.wordpress.id]
+  }
+
+  iam_instance_profile {
+    name = aws_iam_instance_profile.instance_profile.name
+  }
 
   key_name = aws_key_pair.deployer.key_name
 
-  iam_instance_profile = aws_iam_instance_profile.instance_profile.name
-
-  user_data_replace_on_change = true
-  user_data_base64 = base64encode(templatefile(
+  user_data = base64encode(templatefile(
     "user_data.tftpl",
     {
       "DB_HOST"    = "${aws_db_instance.this.endpoint}"
@@ -81,6 +90,28 @@ resource "aws_instance" "this" {
     }
     )
   )
+
+  tags = {
+    Name = "${random_pet.wordpress_db_user.keepers.name_prefix}-launch-template"
+  }
+}
+
+resource "aws_instance" "this" {
+  depends_on = [
+    aws_launch_template.this,
+    terraform_data.user_data_replace
+  ]
+
+  lifecycle {
+    replace_triggered_by = [terraform_data.user_data_replace]
+    ignore_changes = [ user_data ]
+  }
+
+  iam_instance_profile = aws_iam_instance_profile.instance_profile.name
+
+  launch_template {
+    id = aws_launch_template.this.id
+  }
 
   tags = {
     Name = "${random_pet.wordpress_db_user.keepers.name_prefix}"
