@@ -13,6 +13,9 @@ terraform {
     tls = {
       source = "hashicorp/tls"
     }
+    http = {
+      source = "hashicorp/http"
+    }
   }
 }
 
@@ -29,3 +32,4 @@ provider "aws" {
 provider "local" {}
 provider "random" {}
 provider "tls" {}
+provider "http" {}

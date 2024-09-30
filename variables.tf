@@ -4,7 +4,7 @@ variable "name_prefix" {
 }
 
 variable "ami_id" {
-  type = string
+  type    = string
   default = "ami-0ebfd941bbafe70c6"
 }
 
@@ -25,11 +25,6 @@ variable "enable_public_mariadb_access" {
   description = "A list of CIDR blocks to permit public MariaDB access. Set to your IP CIDR block to enable (https://www.whatismyip.com/)"
   type        = list(string)
   default     = []
-}
-
-variable "ssh_key_path" {
-  type    = string
-  default = "~/.ssh/"
 }
 
 variable "deployer_rsa_key_name" {

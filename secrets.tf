@@ -3,18 +3,6 @@ resource "tls_private_key" "rsa" {
   rsa_bits  = 4096
 }
 
-resource "local_sensitive_file" "rsa_private" {
-  content         = tls_private_key.rsa.private_key_pem
-  filename        = "${var.ssh_key_path}${var.deployer_rsa_key_name}.id_rsa"
-  file_permission = 0600
-}
-
-resource "local_file" "rsa_public" {
-  content         = trimspace(tls_private_key.rsa.public_key_openssh)
-  filename        = "${var.ssh_key_path}${var.deployer_rsa_key_name}.id_rsa.pub"
-  file_permission = 0644
-}
-
 resource "random_id" "security_group_mariadb" {
   byte_length = 8
 }

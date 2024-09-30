@@ -5,13 +5,34 @@ yum install docker jq -y
 service docker start
 usermod -a -G docker ec2-user
 
-WORDPRESS_DB_CREDENTIALS=`/usr/bin/aws ssm get-parameter --name "db_credentials" --with-decryption --query Parameter.Value --region us-east-1 --output text`
-WORDPRESS_DB_USER=`echo "$${WORDPRESS_DB_CREDENTIALS}" | jq -r .username`
-WORDPRESS_DB_PASSWORD=`echo "$${WORDPRESS_DB_CREDENTIALS}" | jq -r .password`
+wget -P /usr/libexec/docker/cli-plugins https://github.com/docker/compose/releases/download/v2.29.7/docker-compose-linux-x86_64
+chmod +x /usr/libexec/docker/cli-plugins/docker-compose-linux-x86_64
+mv /usr/libexec/docker/cli-plugins/docker-compose-linux-x86_64 /usr/libexec/docker/cli-plugins/docker-compose
 
-docker run -d \
--e WORDPRESS_DB_HOST="${DB_HOST}" \
--e WORDPRESS_DB_USER="$${WORDPRESS_DB_USER}" \
--e WORDPRESS_DB_PASSWORD="$${WORDPRESS_DB_PASSWORD}" \
--e WORDPRESS_DB_NAME=wordpress \
--p 80:80 ${IMAGE_NAME}:${IMAGE_TAG}
+WORDPRESS_COMPOSE_DIR="/opt/wordpress"
+WORDPRESS_COMPOSE_FILE="$${WORDPRESS_COMPOSE_DIR}/docker-compose.yml"
+
+mkdir "$${WORDPRESS_COMPOSE_DIR}"
+cat <<EOF > "$${WORDPRESS_COMPOSE_FILE}"
+services:
+  wordpress:
+    image: \$${DC_IMAGE_NAME}:\$${DC_IMAGE_TAG}
+    ports:
+      - "80:80"
+    environment:
+      - WORDPRESS_DB_HOST=\$${DC_WORDPRESS_DB_HOST}
+      - WORDPRESS_DB_NAME=\$${DC_WORDPRESS_DB_NAME}
+      - WORDPRESS_DB_USER=\$${DC_WORDPRESS_DB_USER}
+      - WORDPRESS_DB_PASSWORD=\$${DC_WORDPRESS_DB_PASSWORD}
+EOF
+
+WORDPRESS_DB_CREDENTIALS=`/usr/bin/aws ssm get-parameter --name "db_credentials" --with-decryption --query Parameter.Value --region us-east-1 --output text`
+
+export DC_IMAGE_NAME="${IMAGE_NAME}"
+export DC_IMAGE_TAG="${IMAGE_TAG}"
+export DC_WORDPRESS_DB_USER=`echo "$${WORDPRESS_DB_CREDENTIALS}" | jq -r .username`
+export DC_WORDPRESS_DB_PASSWORD=`echo "$${WORDPRESS_DB_CREDENTIALS}" | jq -r .password`
+export DC_WORDPRESS_DB_HOST="${DB_HOST}"
+export DC_WORDPRESS_DB_NAME="wordpress"
+
+docker compose -f "$${WORDPRESS_COMPOSE_FILE}" up -d
