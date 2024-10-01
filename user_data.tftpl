@@ -13,6 +13,8 @@ WORDPRESS_COMPOSE_DIR="/opt/wordpress"
 WORDPRESS_COMPOSE_FILE="$${WORDPRESS_COMPOSE_DIR}/docker-compose.yml"
 
 mkdir "$${WORDPRESS_COMPOSE_DIR}"
+mkdir /opt/certs
+
 cat <<EOF > "$${WORDPRESS_COMPOSE_FILE}"
 services:
   wordpress:
@@ -25,6 +27,10 @@ services:
       - WORDPRESS_DB_USER=\$${DC_WORDPRESS_DB_USER}
       - WORDPRESS_DB_PASSWORD=\$${DC_WORDPRESS_DB_PASSWORD}
 EOF
+
+/usr/bin/aws ssm get-parameter --name "letsencrypt_certificate_private" --with-decryption --query Parameter.Value --region us-east-1 --output text | jq -r .private_pem > /opt/certs/private.pem
+/usr/bin/aws ssm get-parameter --name "letsencrypt_certificate_public" --with-decryption --query Parameter.Value --region us-east-1 --output text | jq -r .public_pem > /opt/certs/public.pem
+/usr/bin/aws ssm get-parameter --name "letsencrypt_certificate_issuer" --with-decryption --query Parameter.Value --region us-east-1 --output text | jq -r .issuer_pem > /opt/certs/issuer.pem
 
 WORDPRESS_DB_CREDENTIALS=`/usr/bin/aws ssm get-parameter --name "db_credentials" --with-decryption --query Parameter.Value --region us-east-1 --output text`
 

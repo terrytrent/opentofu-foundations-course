@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog],
 and this project adheres to [Semantic Versioning].
 
+## [0.0.5] - 2024-09-30
+### Added
+
+- Added DNS registration
+- Added LetsEncrypt Certification generation
+
+### Changed
+
+- Modified User Data to pull certificates onto server
+
 ## [0.0.4] - 2024-09-30
 ### Changed
 

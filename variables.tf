@@ -31,3 +31,13 @@ variable "deployer_rsa_key_name" {
   type    = string
   default = "deployer"
 }
+
+variable "dns_domain" {
+  type    = string
+  default = "trentathome.xyz"
+}
+
+variable "dns_subdomain" {
+  type    = string
+  default = "ttopentofu"
+}

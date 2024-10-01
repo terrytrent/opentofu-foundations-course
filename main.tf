@@ -60,6 +60,9 @@ resource "terraform_data" "user_data_replace" {
 
 resource "aws_launch_template" "this" {
   depends_on = [
+    aws_ssm_parameter.letsencrypt_certificate_private,
+    aws_ssm_parameter.letsencrypt_certificate_public,
+    aws_ssm_parameter.letsencrypt_certificate_issuer,
     aws_db_instance.this,
     aws_security_group.wordpress,
     aws_key_pair.deployer,
@@ -104,7 +107,7 @@ resource "aws_instance" "this" {
 
   lifecycle {
     replace_triggered_by = [terraform_data.user_data_replace]
-    ignore_changes = [ user_data ]
+    ignore_changes       = [user_data]
   }
 
   iam_instance_profile = aws_iam_instance_profile.instance_profile.name
