@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog],
 and this project adheres to [Semantic Versioning].
 
+## [0.0.6] - 2024-10-10
+### Added
+
+- Created modules for the instance, database, dns, and certificate
+
 ## [0.0.5] - 2024-09-30
 ### Added
 
