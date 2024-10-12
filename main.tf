@@ -1,13 +1,5 @@
 locals {
-  docker_compose_download_url = [for a in jsondecode(data.http.docker_compose_release_json.response_body)["assets"] : a
-  if a["name"] == "docker-compose-linux-x86_64"][0]["browser_download_url"]
-
   common_name = "${var.dns_subdomain}.${var.dns_domain}"
-}
-
-data "http" "docker_compose_release_json" {
-  url    = "https://api.github.com/repos/docker/compose/releases/latest"
-  method = "GET"
 }
 
 data "aws_ssm_parameter" "dynu_api_key" {
@@ -53,8 +45,6 @@ module "aws_instance" {
   private_pem = module.letsencrypt_certificate.private_pem
   public_pem = module.letsencrypt_certificate.public_pem
   issuer_pem = module.letsencrypt_certificate.issuer_pem
-
-  docker_compose_download_url = local.docker_compose_download_url
 
   ingress_source_cidr = "${chomp(data.http.myip.response_body)}/32"
 }

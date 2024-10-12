@@ -9,6 +9,7 @@ wget -O /usr/libexec/docker/cli-plugins/docker-compose ${DOCKER_COMPOSE_URL}
 chmod +x /usr/libexec/docker/cli-plugins/docker-compose
 
 WORDPRESS_COMPOSE_DIR="/opt/wordpress"
+WORDPRESS_CERTS_DIR="$${WORDPRESS_COMPOSE_DIR}/certs"
 WORDPRESS_COMPOSE_FILE="$${WORDPRESS_COMPOSE_DIR}/docker-compose.yml"
 WORDPRESS_DB_CREDENTIALS=`/usr/bin/aws ssm get-parameter --name "db_credentials" --with-decryption --query Parameter.Value --region us-east-1 --output text`
 
@@ -19,24 +20,19 @@ export DC_WORDPRESS_DB_NAME="wordpress"
 export DC_WORDPRESS_DB_USER=`echo "$${WORDPRESS_DB_CREDENTIALS}" | jq -r .username`
 export DC_WORDPRESS_DB_PASSWORD=`echo "$${WORDPRESS_DB_CREDENTIALS}" | jq -r .password`
 
-mkdir "$${WORDPRESS_COMPOSE_DIR}"
-mkdir /opt/certs
+mkdir -p "$${WORDPRESS_CERTS_DIR}"
 
-/usr/bin/aws ssm get-parameter --name "letsencrypt_certificate_private" --with-decryption --query Parameter.Value --region us-east-1 --output text | jq -r .private_pem > /opt/certs/private.pem
-/usr/bin/aws ssm get-parameter --name "letsencrypt_certificate_public" --with-decryption --query Parameter.Value --region us-east-1 --output text | jq -r .public_pem > /opt/certs/public.pem
-/usr/bin/aws ssm get-parameter --name "letsencrypt_certificate_issuer" --with-decryption --query Parameter.Value --region us-east-1 --output text | jq -r .issuer_pem > /opt/certs/issuer.pem
+/usr/bin/aws ssm get-parameter --name "letsencrypt_certificate_public" --with-decryption --query Parameter.Value --region us-east-1 --output text | jq -r .public_pem > "$${WORDPRESS_CERTS_DIR}/public.pem"
+/usr/bin/aws ssm get-parameter --name "letsencrypt_certificate_private" --with-decryption --query Parameter.Value --region us-east-1 --output text | jq -r .private_pem > "$${WORDPRESS_CERTS_DIR}/private.pem"
+/usr/bin/aws ssm get-parameter --name "letsencrypt_certificate_issuer" --with-decryption --query Parameter.Value --region us-east-1 --output text | jq -r .issuer_pem > "$${WORDPRESS_CERTS_DIR}/issuer.pem"
+cat "$${WORDPRESS_CERTS_DIR}/issuer.pem" >> "$${WORDPRESS_CERTS_DIR}/public.pem"
+
+cat <<'EOF' > "$${WORDPRESS_COMPOSE_DIR}/nginx.conf"
+${NGINX_CONFIG}
+EOF
 
 cat <<EOF > "$${WORDPRESS_COMPOSE_FILE}"
-services:
-  wordpress:
-    image: $${DC_IMAGE_NAME}:$${DC_IMAGE_TAG}
-    ports:
-      - "80:80"
-    environment:
-      - WORDPRESS_DB_HOST=$${DC_WORDPRESS_DB_HOST}
-      - WORDPRESS_DB_NAME=$${DC_WORDPRESS_DB_NAME}
-      - WORDPRESS_DB_USER=$${DC_WORDPRESS_DB_USER}
-      - WORDPRESS_DB_PASSWORD=$${DC_WORDPRESS_DB_PASSWORD}
+${DOCKER_COMPOSE}
 EOF
 
 docker compose -f "$${WORDPRESS_COMPOSE_FILE}" up -d

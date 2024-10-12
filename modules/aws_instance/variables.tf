@@ -41,11 +41,6 @@ variable "issuer_pem" {
     type = string
 }
 
-variable "docker_compose_download_url" {
-  type = string
-  default = ""
-}
-
 variable "ingress_source_cidr" {
   type = string
 }

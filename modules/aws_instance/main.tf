@@ -5,6 +5,29 @@ data "aws_vpc" "default" {
   }
 }
 
+locals {
+  docker_compose_download_url = [for a in jsondecode(data.http.docker_compose_release_json.response_body)["assets"] : a
+  if a["name"] == "docker-compose-linux-x86_64"][0]["browser_download_url"]
+  nginx_config = file("${path.module}/templates/nginx.conf")
+  docker_compose = file("${path.module}/templates/docker-compose.yml")
+  user_data = templatefile(
+    "${path.module}/templates/user_data.tftpl",
+    {
+      "DOCKER_COMPOSE_URL" = "${local.docker_compose_download_url}"
+      "DB_HOST"            = "${var.db_host}"
+      "IMAGE_NAME"         = "${var.image.name}"
+      "IMAGE_TAG"          = "${var.image.tag}"
+      "NGINX_CONFIG"       = "${local.nginx_config}"
+      "DOCKER_COMPOSE"     = "${local.docker_compose}"
+    }
+  )
+}
+
+data "http" "docker_compose_release_json" {
+  url    = "https://api.github.com/repos/docker/compose/releases/latest"
+  method = "GET"
+}
+
 data "aws_iam_policy_document" "assume_role_policy" {
   statement {
     actions = [
@@ -77,11 +100,13 @@ resource "aws_iam_instance_profile" "instance_profile" {
 }
 
 resource "terraform_data" "user_data_replace" {
-  input = filesha1("${path.module}/templates/user_data.tftpl")
+  input = sha1(local.user_data)
 }
 
 resource "aws_launch_template" "this" {
   name = "${var.name_prefix}-launch-template"
+
+  update_default_version = true
 
   image_id      = var.ami_id
   instance_type = var.instance_type
@@ -97,16 +122,7 @@ resource "aws_launch_template" "this" {
 
   key_name = aws_key_pair.deployer.key_name
 
-  user_data = base64encode(templatefile(
-    "${path.module}/templates/user_data.tftpl",
-    {
-      "DOCKER_COMPOSE_URL" = "${var.docker_compose_download_url}"
-      "DB_HOST"            = "${var.db_host}"
-      "IMAGE_NAME"         = "${var.image.name}"
-      "IMAGE_TAG"          = "${var.image.tag}"
-    }
-    )
-  )
+  user_data = base64encode(local.user_data)
 
   tags = {
     Name = "${var.name_prefix}-launch-template"
@@ -142,6 +158,16 @@ resource "aws_security_group" "wordpress" {
     description = "HTTP"
     from_port   = 80
     to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["${var.ingress_source_cidr}"]
+  }
+
+
+
+  ingress {
+    description = "HTTP"
+    from_port   = 443
+    to_port     = 443
     protocol    = "tcp"
     cidr_blocks = ["${var.ingress_source_cidr}"]
   }
