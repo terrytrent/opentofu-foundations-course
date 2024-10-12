@@ -1,0 +1,38 @@
+#!/bin/bash
+
+yum update -y
+yum install docker jq -y
+service docker start
+usermod -a -G docker ec2-user
+
+wget -O /usr/libexec/docker/cli-plugins/docker-compose ${DOCKER_COMPOSE_URL}
+chmod +x /usr/libexec/docker/cli-plugins/docker-compose
+
+WORDPRESS_COMPOSE_DIR="/opt/wordpress"
+WORDPRESS_CERTS_DIR="$${WORDPRESS_COMPOSE_DIR}/certs"
+WORDPRESS_COMPOSE_FILE="$${WORDPRESS_COMPOSE_DIR}/docker-compose.yml"
+WORDPRESS_DB_CREDENTIALS=`/usr/bin/aws ssm get-parameter --name "db_credentials" --with-decryption --query Parameter.Value --region us-east-1 --output text`
+
+export DC_IMAGE_NAME="${IMAGE_NAME}"
+export DC_IMAGE_TAG="${IMAGE_TAG}"
+export DC_WORDPRESS_DB_HOST="${DB_HOST}"
+export DC_WORDPRESS_DB_NAME="wordpress"
+export DC_WORDPRESS_DB_USER=`echo "$${WORDPRESS_DB_CREDENTIALS}" | jq -r .username`
+export DC_WORDPRESS_DB_PASSWORD=`echo "$${WORDPRESS_DB_CREDENTIALS}" | jq -r .password`
+
+mkdir -p "$${WORDPRESS_CERTS_DIR}"
+
+/usr/bin/aws ssm get-parameter --name "letsencrypt_certificate_public" --with-decryption --query Parameter.Value --region us-east-1 --output text | jq -r .public_pem > "$${WORDPRESS_CERTS_DIR}/public.pem"
+/usr/bin/aws ssm get-parameter --name "letsencrypt_certificate_private" --with-decryption --query Parameter.Value --region us-east-1 --output text | jq -r .private_pem > "$${WORDPRESS_CERTS_DIR}/private.pem"
+/usr/bin/aws ssm get-parameter --name "letsencrypt_certificate_issuer" --with-decryption --query Parameter.Value --region us-east-1 --output text | jq -r .issuer_pem > "$${WORDPRESS_CERTS_DIR}/issuer.pem"
+cat "$${WORDPRESS_CERTS_DIR}/issuer.pem" >> "$${WORDPRESS_CERTS_DIR}/public.pem"
+
+cat <<'EOF' > "$${WORDPRESS_COMPOSE_DIR}/nginx.conf"
+${NGINX_CONFIG}
+EOF
+
+cat <<EOF > "$${WORDPRESS_COMPOSE_FILE}"
+${DOCKER_COMPOSE}
+EOF
+
+docker compose -f "$${WORDPRESS_COMPOSE_FILE}" up -d

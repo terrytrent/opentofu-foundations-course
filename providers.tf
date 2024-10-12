@@ -13,6 +13,13 @@ terraform {
     tls = {
       source = "hashicorp/tls"
     }
+    http = {
+      source = "hashicorp/http"
+    }
+    acme = {
+      source  = "vancluever/acme"
+      version = "~> 2.0"
+    }
   }
 }
 
@@ -29,3 +36,4 @@ provider "aws" {
 provider "local" {}
 provider "random" {}
 provider "tls" {}
+provider "http" {}
