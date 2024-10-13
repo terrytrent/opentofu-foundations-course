@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog],
 and this project adheres to [Semantic Versioning].
 
+## [0.0.8] - 2024-10-12
+### Changed
+
+- Parameterized ingress and egress security group rules for the aws instance security group
+
+### Added
+
+- Added a Cat Fact as a tag on the aws_instance resource in the aws_instance module
+
 ## [0.0.7] - 2024-10-12
 ### Added
 
